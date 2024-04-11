@@ -1,6 +1,7 @@
 /*
 ** ListPro extension
-** 2023, Mahmoud Fayed 
+** 2023, Mahmoud Fayed
+** 2024, Bert Mariani (Added DestCol support in updateList() as a six parameter) 
 */
 
 #include "ring.h"
@@ -160,13 +161,13 @@ RING_FUNC(ring_list2bytes)
     RING_API_FREE(cData);
 }
 
-
 RING_FUNC(ring_updatelist)
 {
     char *cOperation  ;
     char *cSelection  ;
     List *pList, *pSubList, *pRow, *pRow2  ;
     int nOPCode,nRow,nCol,nStart,nEnd,iValue  ;
+    int dCol ;                               
     int x,y  ;
     double nValue  ;
     VM *pVM  ;
@@ -195,12 +196,13 @@ RING_FUNC(ring_updatelist)
     nOPCode = 0 ;
     nRow = 0 ;
     nCol = 0 ;
+    dCol = 0 ;     
     nStart = 0 ;
     nEnd = 0 ;
-    pRow = NULL ;
-    /* Check Selection */
+    pRow = NULL ;	
+
     if ( strcmp(cSelection,"row") == 0 ) {
-        if ( RING_API_PARACOUNT == 5 ) {
+       if ( RING_API_PARACOUNT == 5 ) {		
             if ( RING_API_ISNUMBER(4) && RING_API_ISNUMBER(5) ) {
                 nOPCode = 1 ;
                 nRow = (int) RING_API_GETNUMBER(4) ;
@@ -228,20 +230,29 @@ RING_FUNC(ring_updatelist)
             return ;
         }
     }
+	
     else if ( strcmp(cSelection,"col") == 0 ) {
-        if ( RING_API_PARACOUNT == 5 ) {
+	if ( RING_API_PARACOUNT == 5 || RING_API_PARACOUNT == 6) {   
             if ( RING_API_ISNUMBER(4) && RING_API_ISNUMBER(5) ) {
                 nOPCode = 2 ;
-                nCol = (int) RING_API_GETNUMBER(4) ;
-                nValue = RING_API_GETNUMBER(5) ;
+                nCol = (int) RING_API_GETNUMBER(4) ;    
+                nValue = RING_API_GETNUMBER(5) ;        
+				
+		dCol = nCol ;                              
+		if ( RING_API_PARACOUNT == 6 )             
+		{
+			dCol = (int) RING_API_GETNUMBER(6) ; 
+		}
+				
                 nStart = 1 ;
                 nEnd = ring_list_getsize(pList) ;
-                iValue = (int) RING_API_GETNUMBER(5) ;
+				
+                iValue = (int) RING_API_GETNUMBER(5) ; 
                 if ( nCol < 1 ) {
                     RING_API_ERROR("The selected column is outside the range of the list");
                     return ;
                 }
-            }
+            }	
             else {
                 RING_API_ERROR(RING_API_BADPARATYPE);
                 return ;
@@ -423,7 +434,7 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( ring_list_getsize(pSubList) >= nCol ) {
                         if ( ring_list_isdouble(pSubList,nCol) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,ring_list_getdouble(pSubList,nCol)+nValue);
+            		    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol, ring_list_getdouble(pSubList,nCol) + nValue);							
                         }
                     }
                 }
@@ -481,7 +492,7 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( ring_list_getsize(pSubList) >= nCol ) {
                         if ( ring_list_isdouble(pSubList,nCol) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,ring_list_getdouble(pSubList,nCol)-nValue);
+			    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol,ring_list_getdouble(pSubList,nCol) - nValue);
                         }
                     }
                 }
@@ -528,18 +539,18 @@ RING_FUNC(ring_updatelist)
             /* Mul Row */
             for ( x = nStart ; x <= nEnd ; x++ ) {
                 if ( ring_list_isdouble(pRow,x) ) {
-                    ring_list_setdouble_gc(pVM->pRingState,pRow,x,ring_list_getdouble(pRow,x)*nValue);
+                    ring_list_setdouble_gc(pVM->pRingState,pRow,x, ring_list_getdouble(pRow,x) * nValue);
                 }
             }
-            break ;
+            break ;						
         case 402 :
             /* Mul Col */
             for ( x = nStart ; x <= nEnd ; x++ ) {
                 if ( ring_list_islist(pList,x) ) {
-                    pSubList = ring_list_getlist(pList,x) ;
-                    if ( ring_list_getsize(pSubList) >= nCol ) {
+                    pSubList = ring_list_getlist(pList,x) ;					
+                    if ( ring_list_getsize(pSubList) >= nCol ) {						
                         if ( ring_list_isdouble(pSubList,nCol) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,ring_list_getdouble(pSubList,nCol)*nValue);
+			    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol, ring_list_getdouble(pSubList,nCol) * nValue);
                         }
                     }
                 }
@@ -597,7 +608,7 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( ring_list_getsize(pSubList) >= nCol ) {
                         if ( ring_list_isdouble(pSubList,nCol) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,ring_list_getdouble(pSubList,nCol)/nValue);
+			    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol, ring_list_getdouble(pSubList,nCol) / nValue);							
                         }
                     }
                 }
@@ -662,7 +673,7 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( (ring_list_getsize(pSubList) >= nCol) && (ring_list_getsize(pSubList) >= nValue) ) {
                         if ( ring_list_isdouble(pSubList,nCol) && ring_list_isdouble(pSubList,nValue) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nValue,ring_list_getdouble(pSubList,nCol));
+                             ring_list_setdouble_gc(pVM->pRingState,pSubList,nValue, ring_list_getdouble(pSubList,nCol));
                         }
                     }
                 }
@@ -680,7 +691,9 @@ RING_FUNC(ring_updatelist)
             /* Copy Items */
                 RING_API_ERROR("The copy operation is not defined for all of the list items");
             break ;
+			
         /* Merge */
+
         case 701 :
             /* Merge two rows */
             if ( (iValue < 1) ||  (iValue > ring_list_getsize(pList) ) ) {
@@ -691,9 +704,9 @@ RING_FUNC(ring_updatelist)
                 pRow2 = ring_list_getlist(pList,iValue) ;
                 for ( x = nStart ; x <= nEnd ; x++ ) {
                     if ( x <= ring_list_getsize(pRow2) ) {
-			if (ring_list_isdouble(pRow2,x)) {
-                            ring_list_setdouble_gc(pVM->pRingState,pRow,x,ring_list_getdouble(pRow,x)+
-									ring_list_getdouble(pRow2,x));
+			             if (ring_list_isdouble(pRow2,x)) {
+                             ring_list_setdouble_gc(pVM->pRingState,pRow,x, ring_list_getdouble(pRow,x) +
+									                                        ring_list_getdouble(pRow2,x));
 			}
                     }
                 }
@@ -706,8 +719,8 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( (ring_list_getsize(pSubList) >= nCol) && (ring_list_getsize(pSubList) >= nValue) ) {
                         if ( ring_list_isdouble(pSubList,nCol) && ring_list_isdouble(pSubList,nValue) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
-			    ring_list_getdouble(pSubList,nCol)+ring_list_getdouble(pSubList,nValue));
+                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,  ring_list_getdouble(pSubList,nCol) + 
+																				   ring_list_getdouble(pSubList,nValue));
                         }
                     }
                 }
