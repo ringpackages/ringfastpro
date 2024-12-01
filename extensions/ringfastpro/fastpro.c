@@ -364,6 +364,19 @@ RING_FUNC(ring_updatelist)
             return ;
         }
     }
+    else if ( strcmp(cOperation,"serial") == 0 ) {
+        nOPCode += 800 ;
+    }
+    else if ( strcmp(cOperation,"pow") == 0 ) {
+        nOPCode += 900 ;
+    }
+    else if ( strcmp(cOperation,"rem") == 0 ) {
+        nOPCode += 1000 ;
+        if ( nValue == 0 ) {
+            RING_API_ERROR("Can't divide by zero");
+            return ;
+        }
+    }
     else {
         RING_API_ERROR("The second parameter must be a string: [Set | Add | Sub | Mul | Div | Copy | Merge ]");
         return ;
@@ -704,9 +717,10 @@ RING_FUNC(ring_updatelist)
                 pRow2 = ring_list_getlist(pList,iValue) ;
                 for ( x = nStart ; x <= nEnd ; x++ ) {
                     if ( x <= ring_list_getsize(pRow2) ) {
-			             if (ring_list_isdouble(pRow2,x)) {
-                             ring_list_setdouble_gc(pVM->pRingState,pRow,x, ring_list_getdouble(pRow,x) +
-									                                        ring_list_getdouble(pRow2,x));
+  	                if (ring_list_isdouble(pRow2,x)) {
+                             ring_list_setdouble_gc(pVM->pRingState,pRow,x, 
+				ring_list_getdouble(pRow,x) +
+                                ring_list_getdouble(pRow2,x));
 			}
                     }
                 }
@@ -719,8 +733,9 @@ RING_FUNC(ring_updatelist)
                     pSubList = ring_list_getlist(pList,x) ;
                     if ( (ring_list_getsize(pSubList) >= nCol) && (ring_list_getsize(pSubList) >= nValue) ) {
                         if ( ring_list_isdouble(pSubList,nCol) && ring_list_isdouble(pSubList,nValue) ) {
-                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,  ring_list_getdouble(pSubList,nCol) + 
-																				   ring_list_getdouble(pSubList,nValue));
+                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,  
+				ring_list_getdouble(pSubList,nCol) + 
+				ring_list_getdouble(pSubList,nValue));
                         }
                     }
                 }
@@ -738,6 +753,157 @@ RING_FUNC(ring_updatelist)
             /* Merge Items */
 		RING_API_ERROR("The merge operation is not defined for all of the list items");
             break ;
+        case 801 :
+            /* Serial Row */
+            if ( ring_list_islist(pList,nRow) ) {
+                pRow2 = ring_list_getlist(pList,nRow) ;
+                for ( x = nStart ; x <= nEnd ; x++ ) {
+	                ring_list_setdouble_gc(pVM->pRingState,pRow2,x,
+				x+nValue);
+                }
+            }
+            break ;
+        case 802 :
+            /* Serial Column */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_islist(pList,x) ) {
+                    pSubList = ring_list_getlist(pList,x) ;
+                    if ( ring_list_getsize(pSubList) >= nCol ) {
+                        if ( ring_list_isdouble(pSubList,nCol) ) {
+                            ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,  
+				x + nValue);
+                        }
+                    }
+                }
+            }
+            break ;
+        /* Pow */
+        case 901 :
+            /* Pow Row */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_isdouble(pRow,x) ) {
+                    ring_list_setdouble_gc(pVM->pRingState,pRow,x, 
+			pow(ring_list_getdouble(pRow,x),nValue) );
+                }
+            }
+            break ;						
+        case 902 :
+            /* Pow Col */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_islist(pList,x) ) {
+                    pSubList = ring_list_getlist(pList,x) ;					
+                    if ( ring_list_getsize(pSubList) >= nCol ) {						
+                        if ( ring_list_isdouble(pSubList,nCol) ) {
+			    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol, 
+				pow(ring_list_getdouble(pSubList,nCol),nValue));
+                        }
+                    }
+                }
+            }
+            break ;
+        case 903 :
+            /* Pow cells in Many Rows */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_islist(pList,x) ) {
+                    pRow = ring_list_getlist(pList,x) ;
+                    for ( y = 1 ; y <= ring_list_getsize(pRow) ; y++ ) {
+                        if ( ring_list_isdouble(pRow,y) ) {
+                            ring_list_setdouble_gc(pVM->pRingState,pRow,y,
+				pow(ring_list_getdouble(pRow,y),nValue) );
+                        }
+                    }
+                }
+            }
+            break ;
+        case 904 :
+            /* Pow cells in Many Columns */
+            for ( nCol = nStart ; nCol <= nEnd ; nCol++ ) {
+                for ( x = 1 ; x <= ring_list_getsize(pList) ; x++ ) {
+                    if ( ring_list_islist(pList,x) ) {
+                        pSubList = ring_list_getlist(pList,x) ;
+                        if ( ring_list_getsize(pSubList) >= nCol ) {
+                            if ( ring_list_isdouble(pSubList,nCol) ) {
+                                ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
+					pow(ring_list_getdouble(pSubList,nCol),nValue));
+                            }
+                        }
+                    }
+                }
+            }
+            break ;
+        case 905 :
+            /* Pow Items */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_isdouble(pList,x) ) {
+                    ring_list_setdouble_gc(pVM->pRingState,pList,x,
+			pow(ring_list_getdouble(pList,x),nValue));
+                }
+            }
+            break ;
+        /* Rem */
+        case 1001 :
+            /* Rem Row */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_isdouble(pRow,x) ) {
+                    ring_list_setdouble_gc(pVM->pRingState,pRow,x,
+			(int) ring_list_getdouble(pRow,x) % (int) nValue);
+                }
+            }
+            break ;
+        case 1002 :
+            /* Rem Col */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_islist(pList,x) ) {
+                    pSubList = ring_list_getlist(pList,x) ;
+                    if ( ring_list_getsize(pSubList) >= nCol ) {
+                        if ( ring_list_isdouble(pSubList,nCol) ) {
+			    ring_list_setdouble_gc(pVM->pRingState,pSubList,dCol,
+				(int) ring_list_getdouble(pSubList,nCol) % (int) nValue);							
+                        }
+                    }
+                }
+            }
+            break ;
+        case 1003 :
+            /* Rem cells in Many Rows */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_islist(pList,x) ) {
+                    pRow = ring_list_getlist(pList,x) ;
+                    for ( y = 1 ; y <= ring_list_getsize(pRow) ; y++ ) {
+                        if ( ring_list_isdouble(pRow,y) ) {
+                            ring_list_setdouble_gc(pVM->pRingState,pRow,y,
+				(int) ring_list_getdouble(pRow,y) % (int) nValue);
+                        }
+                    }
+                }
+            }
+            break ;
+        case 1004 :
+            /* Rem cells in Many Columns */
+            for ( nCol = nStart ; nCol <= nEnd ; nCol++ ) {
+                for ( x = 1 ; x <= ring_list_getsize(pList) ; x++ ) {
+                    if ( ring_list_islist(pList,x) ) {
+                        pSubList = ring_list_getlist(pList,x) ;
+                        if ( ring_list_getsize(pSubList) >= nCol ) {
+                            if ( ring_list_isdouble(pSubList,nCol) ) {
+                                ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
+					(int) ring_list_getdouble(pSubList,nCol) % (int) nValue);
+                            }
+                        }
+                    }
+                }
+            }
+            break ;
+        case 1005 :
+            /* Rem Items */
+            for ( x = nStart ; x <= nEnd ; x++ ) {
+                if ( ring_list_isdouble(pList,x) ) {
+                    ring_list_setdouble_gc(pVM->pRingState,pList,x,
+			(int) ring_list_getdouble(pList,x) % (int) nValue);
+                }
+            }
+            break ;
+
     }
 }
 
@@ -807,6 +973,12 @@ RING_FUNC(ring_updatecolumn)
 			aInsOPCode[nCurrentIns] = INS_MERGE;
 		} else if ( strcmp(cCommand,"copy") == 0 ) {
 			aInsOPCode[nCurrentIns] = INS_COPY;
+		} else if ( strcmp(cCommand,"serial") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_SERIAL;
+		} else if ( strcmp(cCommand,"pow") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_POW;
+		} else if ( strcmp(cCommand,"rem") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_REM;
 		}
 		aInsCol[nCurrentIns]    = nCol;
 		aInsiValue[nCurrentIns] = iValue;
@@ -866,6 +1038,25 @@ RING_FUNC(ring_updatecolumn)
 							ring_list_setdouble_gc(pVM->pRingState,pSubList,iValue,
 							ring_list_getdouble(pSubList,nCol));
 						}
+					}
+				} else if ( aInsOPCode[nCurrentIns] == INS_SERIAL ) {
+					if ( ring_list_isdouble(pSubList,nCol) ) {
+						ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
+						x+dValue );
+					}
+				} else if ( aInsOPCode[nCurrentIns] == INS_POW ) {
+					if ( ring_list_isdouble(pSubList,nCol) ) {
+						ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
+						pow(ring_list_getdouble(pSubList,nCol),dValue) );
+					}
+				} else if ( aInsOPCode[nCurrentIns] == INS_REM ) {
+        				if ( dValue == 0 ) {
+            					RING_API_ERROR("Can't divide by zero");
+            					return ;
+        				}
+					if ( ring_list_isdouble(pSubList,nCol) ) {
+						ring_list_setdouble_gc(pVM->pRingState,pSubList,nCol,
+						(int) ring_list_getdouble(pSubList,nCol) % (int) dValue);
 					}
 				}				
 			}
@@ -940,6 +1131,12 @@ RING_FUNC(ring_updatebytescolumn)
 			aInsOPCode[nCurrentIns] = INS_MERGE;
 		} else if ( strcmp(cCommand,"copy") == 0 ) {
 			aInsOPCode[nCurrentIns] = INS_COPY;
+		} else if ( strcmp(cCommand,"serial") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_SERIAL;
+		} else if ( strcmp(cCommand,"pow") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_POW;
+		} else if ( strcmp(cCommand,"rem") == 0 ) {
+			aInsOPCode[nCurrentIns] = INS_REM;
 		}
 		aInsCol[nCurrentIns]    = nCol;
 		aInsiValue[nCurrentIns] = iValue;
@@ -1006,6 +1203,34 @@ RING_FUNC(ring_updatebytescolumn)
 					if ( dCalc > 1 ) dCalc = 1;
 				dCalc *= nDec;
 				pBytes[(x-1)+(iValue-1)] = (char) dCalc;
+			} else if ( aInsOPCode[nCurrentIns] == INS_SERIAL ) {
+				dCalc = (double) pBytes[(x-1)+(nCol-1)];
+				dCalc = dCalc / nDec;
+				dCalc = x+dValue;
+				if ( nDec != 1 )
+					if ( dCalc > 1 ) dCalc = 1;
+				dCalc *= nDec;
+				pBytes[(x-1)+(nCol-1)] = (char) dCalc;
+			} else if ( aInsOPCode[nCurrentIns] == INS_POW ) {
+				dCalc = (double) pBytes[(x-1)+(nCol-1)];
+				dCalc = dCalc / nDec;
+				dCalc = pow(dCalc,dValue);
+				if ( nDec != 1 )
+					if ( dCalc > 1 ) dCalc = 1;
+				dCalc *= nDec;
+				pBytes[(x-1)+(nCol-1)] = (char) dCalc;
+			} else if ( aInsOPCode[nCurrentIns] == INS_REM ) {
+       				if ( dValue == 0 ) {
+           					RING_API_ERROR("Can't divide by zero");
+           					return ;
+       				}
+				dCalc = (double) pBytes[(x-1)+(nCol-1)];
+				dCalc /= nDec;
+				dCalc = (int)dCalc % (int)dValue;
+				if ( nDec != 1 )
+					if ( dCalc > 1 ) dCalc = 1;
+				dCalc *= nDec;
+				pBytes[(x-1)+(nCol-1)] = (char) dCalc;
 			}				
 		}
 	}
